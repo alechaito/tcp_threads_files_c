@@ -7,17 +7,21 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <string.h>
+#include <string>
 #include <netdb.h>
 #include <sys/types.h> 
 #include <sys/socket.h>
+#include <cstring>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <sys/stat.h>
+#include <iostream>
 #include <dirent.h>
 
-#define BUFSIZE 1024
+#define BUFSIZE 1024;
+
+using namespace std;
 
 // Headers
 void *routine(void *socket_desc);
@@ -59,23 +63,27 @@ int main(int argc, char **argv) {
 
 
     server_sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_sock < 0) 
-        error("ERROR opening socket");
+    if (server_sock < 0) { 
+        //cout << "ERROR opening socket";
+        printf("dddhdhdh");
+    }
     optval = 1;
     setsockopt(server_sock, SOL_SOCKET, SO_REUSEADDR, 
             (const void *)&optval , sizeof(int));
 
-    bzero((char *) &serveraddr, sizeof(serveraddr));
+    //bzero((char *) &serveraddr, sizeof(serveraddr));
 
     serveraddr.sin_family = AF_INET;
     serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
     serveraddr.sin_port = htons((unsigned short)portno);
 
-    if (bind(server_sock, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0) 
-        error("ERROR on binding");
-
-    if (listen(server_sock, 10) < 0) /* allow 5 requests to queue up */ 
-        error("ERROR on listen");
+    if (bind(server_sock, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0) { 
+        printf("dddhdhdh");
+    }
+    if (listen(server_sock, 10) < 0) { /* allow 5 requests to queue up */ 
+        //cout << "ERROR on listen";
+        printf("dddhdhdh");
+    }
 
     pthread_attr_init(&pthread_attr);
     pthread_attr_setdetachstate(&pthread_attr, PTHREAD_CREATE_DETACHED);
@@ -97,60 +105,60 @@ void *routine(void *arg) {
     pthread_arg_t *pthread_arg = (pthread_arg_t *)arg;
     int sock = pthread_arg->sock;
     struct sockaddr_in client_address = pthread_arg->client_address;
-    int read_size;
-    char *message , client_message[2000];
-    DIR *path = opendir(".");
-    char *source;
-    int FLAG_CD = 0;
+    int size_msg;
+    char c_msg[2000];
+    string cmd; // String de comandos auxiliar
+    string result; // Resultado para os clients
+    int flag_cd = 0; // Flag cd
+    DIR *path = opendir("."); // Diretorio aberto
+    string dir; // Diretorio atual
      
     //Send some messages to the client
-    message = "Greetings! I am your connection handler\n";
-    write(sock , message , strlen(message));
-     
-    message = "Now type something and i shall repeat what you type \n";
-    write(sock , message , strlen(message));
+    result = "[+] Voce foi conectado, bem vindo... \n";
+    write(sock , result.c_str(), result.length());
      
     //Receive a message from client
-    while( (read_size = recv(sock , client_message , 2000 , 0)) > 0 ){
+    while( (size_msg = recv(sock , c_msg, 2000, 0)) > 0 ){
         //end of string marker
-		//client_message[read_size] = '\0';
-
-        if(FLAG_CD == 1) {
-            printf("to aqui \n");
-            source = (char*)malloc(read_size * sizeof(char));
-            strcpy(source, client_message);
-            strtok(source, "\n");
-            path = opendir(source);
-            printf("src: %s", source);
-            FLAG_CD = 0;
+		c_msg[size_msg] = '\0';
+        cmd = string(c_msg);
+        //cmd.erase(cmd.length()-1);
+        cmd.erase(cmd.length()-1);
+        //##########################
+        // Retornando comando digitado
+        //cout << cmd;
+        if(flag_cd == 1) {
+            dir = cmd;
+            path = opendir(cmd.c_str());
+            result = "[+] Diretorio atualizado: "+cmd+"\n";
+            write(sock , result.c_str(), result.length());
+            flag_cd = 0;
+            //memset(c_msg, 2000, 0);
         }
+
+        if (cmd.compare("mkdir") == 0) {
+            printf("lul");
+            //string create = dir+"/test";
+            //cout << "vim2";
+            //if (mkdir(create.c_str(), S_IRWXU != 0))
+            //cout << "[+] Erro ao criar pasta. \n";
+            //result = "[+] Arquivo criado com sucesso ->" + create + "\n";
+            //write(sock , result.c_str(), result.length());
+            //memset(c_msg, 2000, 0);
+        }
+        else if (cmd.compare("cd") == 0) {
+            result = "[+] Insira o diretorio. \n"; 
+            write(sock , result.c_str(), result.length());
+            flag_cd = 1;
+            //memset(c_msg, 2000, 0);
+        }
+        else {
+            cout << "[+] Comando desconhecido...";
+        }
+
+        //write(sock , cmd.c_str(), cmd.length());
+        memset(c_msg, 2000, 0);
         
-        client_message[read_size] = '\0';
-
-        if( memcmp(client_message, "mkdir", 5) == 0) {
-            mkdir("./new", S_IRWXU);
-        }
-        else if( memcmp(client_message, "cd", 2) == 0) {
-            FLAG_CD = 1;
-        }
-        else if( memcmp(client_message, "list", 4) == 0) {
-            struct dirent *de;
-            while (de = readdir(path)) {
-                strcat(client_message, de->d_name); 
-                strcat(client_message, "\n");
-                write(sock , client_message , strlen(client_message));
-            }
-            //closedir(path);
-        }
-        else{
-            printf("[+] Comando desconhecido...\n");
-        }
-
-		//Send the message back to client
-        write(sock , client_message , strlen(client_message));
-		
-		//clear the message buffer
-		memset(client_message, 0, 2000);
     }
          
     return 0;
