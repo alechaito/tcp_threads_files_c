@@ -110,60 +110,91 @@ void *routine(void *arg) {
     string cmd; // String de comandos auxiliar
     string result; // Resultado para os clients
     int flag_cd = 0; // Flag cd
+    int flag_rm = 0;
     DIR *path = opendir("."); // Diretorio aberto
-    string dir; // Diretorio atual
+    string dir = "."; // Diretorio atual
      
     //Send some messages to the client
     result = "[+] Voce foi conectado, bem vindo... \n";
     write(sock , result.c_str(), result.length());
-     
+    bzero(c_msg, 2001);
     //Receive a message from client
-    while( (size_msg = recv(sock , c_msg, 2000, 0)) > 0 ){
-        //end of string marker
-		c_msg[size_msg] = '\0';
+    while(1) {
+        size_msg = recv(sock , c_msg, 2000, 0);
+        //read(sock, c_msg, 2000);
+        // Parsing msg from client and remove characters
         cmd = string(c_msg);
-        //cmd.erase(cmd.length()-1);
         cmd.erase(cmd.length()-1);
-        //##########################
-        // Retornando comando digitado
-        //cout << cmd;
+
+        // 3 - Complemento
         if(flag_cd == 1) {
             dir = cmd;
             path = opendir(cmd.c_str());
             result = "[+] Diretorio atualizado: "+cmd+"\n";
             write(sock , result.c_str(), result.length());
             flag_cd = 0;
-            //memset(c_msg, 2000, 0);
         }
+        // 2 - Complemento
+        if(flag_rm == 1) {
+            rmdir(cmd.c_str());
 
-        if (cmd.compare("mkdir") == 0) {
-            printf("lul");
-            //string create = dir+"/test";
-            //cout << "vim2";
-            //if (mkdir(create.c_str(), S_IRWXU != 0))
-            //cout << "[+] Erro ao criar pasta. \n";
-            //result = "[+] Arquivo criado com sucesso ->" + create + "\n";
-            //write(sock , result.c_str(), result.length());
-            //memset(c_msg, 2000, 0);
+            result = "[+] Diretorio removido: "+cmd+"\n";
+            write(sock , result.c_str(), result.length());
+            flag_rm = 0;
         }
+        /*
+        1 - criar (sub)diretório
+        2 - remover (sub)diretório
+        3 - entrar em (sub)diretório
+        4 - mostrar conteúdo do diretório
+        5 - criar arquivo 
+        6 - remover arquivo
+        7 - escrever um sequência de caracteres em um arquivo
+        9 - mostrar conteúdo do arquivo
+        */
+        // 1 - Criar subdiretorio
+        if (cmd.compare("mkdir") == 0) {
+            string create = dir+"/test";
+            if(mkdir(create.c_str(), S_IRWXU != 0))
+                cout << "[+] Erro ao criar pasta. \n";
+            result = "[+] Arquivo criado com sucesso ->" + create + "\n";
+            write(sock , result.c_str(), result.length());
+        }
+        // 2 - Apagar subdiretorio
+        else if (cmd.compare("rm") == 0) {
+            result = "[+] Insira o nome do diretorio a ser removido: "+cmd+"\n";
+            write(sock , result.c_str(), result.length());
+            flag_rm = 1;
+        }
+        // 3 - Entrar em diretorio
         else if (cmd.compare("cd") == 0) {
             result = "[+] Insira o diretorio. \n"; 
             write(sock , result.c_str(), result.length());
             flag_cd = 1;
-            //memset(c_msg, 2000, 0);
         }
+        // 3 - Entrar em diretorio
+        else if (cmd.compare("ls") == 0) {
+            result = "[+] Insira o diretorio. \n"; 
+            write(sock , result.c_str(), result.length());
+            flag_cd = 1;
+        }
+        // 5 - Criar arquivo
+        else if (cmd.compare("file") == 0) {
+            FILE *fp;
+            string create = dir+"/new.txt";
+            fp = fopen(create.c_str(), "w");
+        }
+        // Comando desconhecido
         else {
-            cout << "[+] Comando desconhecido...";
+            cout << "[+] Comando desconhecido... \n";
         }
 
         //write(sock , cmd.c_str(), cmd.length());
-        memset(c_msg, 2000, 0);
-        
+        bzero(c_msg, 2001);
     }
          
     return 0;
 }
-
 
 
 
