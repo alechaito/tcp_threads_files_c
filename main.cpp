@@ -18,6 +18,7 @@
 #include <sys/stat.h>
 #include <iostream>
 #include <dirent.h>
+#include <fstream>
 
 #define BUFSIZE 1024;
 
@@ -109,10 +110,10 @@ void *routine(void *arg) {
     char c_msg[2000];
     string cmd; // String de comandos auxiliar
     string result; // Resultado para os clients
-    int flag_cd = 0; // Flag cd
-    int flag_rm = 0;
+    int FLAG_CD, FLAG_RM, FLAG_NANO = 0; // Flag cd
     DIR *path = opendir("."); // Diretorio aberto
     string dir = "."; // Diretorio atual
+    string file_name = "";
      
     //Send some messages to the client
     result = "[+] Voce foi conectado, bem vindo... \n";
@@ -121,26 +122,34 @@ void *routine(void *arg) {
     //Receive a message from client
     while(1) {
         size_msg = recv(sock , c_msg, 2000, 0);
-        //read(sock, c_msg, 2000);
         // Parsing msg from client and remove characters
         cmd = string(c_msg);
         cmd.erase(cmd.length()-1);
 
         // 3 - Complemento
-        if(flag_cd == 1) {
+        if(FLAG_CD == 1) {
             dir = cmd;
             path = opendir(cmd.c_str());
             result = "[+] Diretorio atualizado: "+cmd+"\n";
             write(sock , result.c_str(), result.length());
-            flag_cd = 0;
+            FLAG_CD = 0;
         }
         // 2 - Complemento
-        if(flag_rm == 1) {
+        if(FLAG_RM == 1) {
             rmdir(cmd.c_str());
 
             result = "[+] Diretorio removido: "+cmd+"\n";
             write(sock , result.c_str(), result.length());
-            flag_rm = 0;
+            FLAG_RM = 0;
+        }
+        // 3 - Complemento
+        if (FLAG_NANO == 1) {
+            fstream fs;
+            string file_path = dir+"/new.txt";
+            fs.open(file_path.c_str(), fstream::in | fstream::out | fstream::app);
+            fs << cmd;
+            fs.close();
+            FLAG_NANO = 0;
         }
         /*
         1 - criar (sub)diretório
@@ -164,25 +173,52 @@ void *routine(void *arg) {
         else if (cmd.compare("rm") == 0) {
             result = "[+] Insira o nome do diretorio a ser removido: "+cmd+"\n";
             write(sock , result.c_str(), result.length());
-            flag_rm = 1;
+            FLAG_RM = 1;
         }
         // 3 - Entrar em diretorio
         else if (cmd.compare("cd") == 0) {
             result = "[+] Insira o diretorio. \n"; 
             write(sock , result.c_str(), result.length());
-            flag_cd = 1;
+            FLAG_CD = 1;
         }
-        // 3 - Entrar em diretorio
+        // 4 - Listar arquivos em um diretorio
         else if (cmd.compare("ls") == 0) {
-            result = "[+] Insira o diretorio. \n"; 
-            write(sock , result.c_str(), result.length());
-            flag_cd = 1;
+            cout << "entrando em um dir" << endl;
+            cout << dir << endl;
+            DIR* dirp = opendir(dir.c_str());
+            struct dirent *de;
+
+            if(dirp == NULL)
+                cout << "error" << endl;
+
+            while ((de = readdir(dirp)) != NULL) {
+                result = string(de->d_name)+"\n"; 
+                write(sock , result.c_str(), result.length());
+            }
+            //closedir(dirp);
         }
         // 5 - Criar arquivo
         else if (cmd.compare("file") == 0) {
             FILE *fp;
             string create = dir+"/new.txt";
             fp = fopen(create.c_str(), "w");
+        }
+        // 5 - Remover arquivo
+        else if (cmd.compare("rmfile") == 0) {
+            FILE *fp;
+            string create = dir+"/new.txt";
+            if(remove(create.c_str()) != 0) {
+                result = "[+] Erro ao deletar arquivo";
+                write(sock , result.c_str(), result.length());
+            }
+            result = "[+] Arquivo deletado com sucesso";
+            write(sock , result.c_str(), result.length());
+        }
+        // 6 - Inserir sequencia de caracteres
+        else if (cmd.compare("nano") == 0) {
+            result = "[+] Digite o texto a ser inserido no arquivo: \n";
+            write(sock , result.c_str(), result.length());
+            FLAG_NANO = 1;
         }
         // Comando desconhecido
         else {
