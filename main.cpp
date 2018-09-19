@@ -57,37 +57,36 @@ int main(int argc, char **argv) {
     * check command line arguments 
     */
     if (argc != 2) {
-    fprintf(stderr, "usage: %s <port>\n", argv[0]);
-    exit(1);
+        fprintf(stderr, "[+] Usage: %s <port>\n", argv[0]);
+        exit(1);
     }
     portno = atoi(argv[1]);
 
 
     server_sock = socket(AF_INET, SOCK_STREAM, 0);
     if (server_sock < 0) { 
-        //cout << "ERROR opening socket";
-        printf("dddhdhdh");
+        cout << "ERROR opening socket" << endl;
     }
     optval = 1;
     setsockopt(server_sock, SOL_SOCKET, SO_REUSEADDR, 
             (const void *)&optval , sizeof(int));
 
-    //bzero((char *) &serveraddr, sizeof(serveraddr));
+    bzero((char *) &serveraddr, sizeof(serveraddr));
 
     serveraddr.sin_family = AF_INET;
     serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
     serveraddr.sin_port = htons((unsigned short)portno);
 
     if (bind(server_sock, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0) { 
-        printf("dddhdhdh");
+        cout << "ERROR on bind" << endl;
     }
     if (listen(server_sock, 10) < 0) { /* allow 5 requests to queue up */ 
-        //cout << "ERROR on listen";
-        printf("dddhdhdh");
+        cout << "ERROR on listen" << endl;
     }
 
     pthread_attr_init(&pthread_attr);
     pthread_attr_setdetachstate(&pthread_attr, PTHREAD_CREATE_DETACHED);
+    pthread_mutex_init(&lock, NULL);
 
     while(1) {
         pthread_arg = (pthread_arg_t *)malloc(sizeof *pthread_arg);
@@ -97,7 +96,8 @@ int main(int argc, char **argv) {
         pthread_arg->sock = client_sock;
         pthread_create(&pthread, &pthread_attr, routine, (void *)pthread_arg);
     }
-
+    pthread_join(pthread, NULL);
+    pthread_mutex_destroy(&lock);
 }
 
 
@@ -137,7 +137,6 @@ void *routine(void *arg) {
         // 2 - Complemento
         if(FLAG_RM == 1) {
             rmdir(cmd.c_str());
-
             result = "[+] Diretorio removido: "+cmd+"\n";
             write(sock , result.c_str(), result.length());
             FLAG_RM = 0;
@@ -150,6 +149,7 @@ void *routine(void *arg) {
             fs << cmd;
             fs.close();
             FLAG_NANO = 0;
+            pthread_mutex_unlock(&lock);
         }
         /*
         1 - criar (sub)diretório
@@ -214,21 +214,44 @@ void *routine(void *arg) {
             result = "[+] Arquivo deletado com sucesso";
             write(sock , result.c_str(), result.length());
         }
-        // 6 - Inserir sequencia de caracteres
+        // 6 - Inserir texto no arquivo
         else if (cmd.compare("nano") == 0) {
+            pthread_mutex_lock(&lock);
             result = "[+] Digite o texto a ser inserido no arquivo: \n";
             write(sock , result.c_str(), result.length());
             FLAG_NANO = 1;
         }
+        // 7 - Mostrar conteudo do arquivo
+        else if (cmd.compare("cat") == 0) {
+            pthread_mutex_lock(&lock);
+            ifstream file;
+            string output;
+            file.open("./new.txt");
+            if (file.is_open()) {
+                while (!file.eof()) {
+                    file >> output;
+                    write(sock, output.c_str(), output.length());
+                }
+            }
+            file.close();
+            /*int test = 100000;
+            while(test >= 1) {
+                
+            }*/
+            pthread_mutex_unlock(&lock);
+        }
+        else if (cmd.compare("exit") == 0) {
+            cout << "[+] Fechando socket..." << endl;
+            close(sock);
+        }
         // Comando desconhecido
         else {
-            cout << "[+] Comando desconhecido... \n";
+            cout << "[+] Comando desconhecido..." << endl;
         }
 
         //write(sock , cmd.c_str(), cmd.length());
         bzero(c_msg, 2001);
     }
-         
     return 0;
 }
 
