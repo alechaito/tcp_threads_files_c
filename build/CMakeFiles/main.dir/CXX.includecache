@@ -1,0 +1,42 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/chaito/Documents/ufsc/so/main.cpp
+stdio.h
+-
+sys/types.h
+-
+unistd.h
+-
+stdlib.h
+-
+string
+-
+netdb.h
+-
+sys/types.h
+-
+sys/socket.h
+-
+cstring
+-
+netinet/in.h
+-
+arpa/inet.h
+-
+pthread.h
+-
+sys/stat.h
+-
+iostream
+-
+dirent.h
+-
+fstream
+-
+

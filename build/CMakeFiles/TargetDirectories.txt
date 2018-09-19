@@ -1,0 +1,3 @@
+/home/chaito/Documents/ufsc/so/build/CMakeFiles/rebuild_cache.dir
+/home/chaito/Documents/ufsc/so/build/CMakeFiles/edit_cache.dir
+/home/chaito/Documents/ufsc/so/build/CMakeFiles/main.dir
