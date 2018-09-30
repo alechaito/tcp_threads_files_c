@@ -6,7 +6,7 @@
 
 #IncludeRegexTransform: 
 
-/home/chaito/Documents/ufsc/so/main.cpp
+/home/chaito/ufsc/so/main.cpp
 stdio.h
 -
 sys/types.h
@@ -38,5 +38,7 @@ iostream
 dirent.h
 -
 fstream
+-
+vector
 -
 

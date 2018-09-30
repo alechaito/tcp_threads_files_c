@@ -1,6 +1,7 @@
 /* 
- * tcpserver.c - A simple TCP echo server 
- * usage: tcpserver <port>
+ * Universidade Federal de Santa Catarina
+ * TCP SERVER: Arquitetura de Sistemas Operacionais
+ * Ale Chaito - RA: 14205353
  */
 
 #include <stdio.h>
@@ -19,6 +20,7 @@
 #include <iostream>
 #include <dirent.h>
 #include <fstream>
+#include <vector>
 
 #define BUFSIZE 1024;
 
@@ -57,7 +59,7 @@ int main(int argc, char **argv) {
     * check command line arguments 
     */
     if (argc != 2) {
-        fprintf(stderr, "[+] Usage: %s <port>\n", argv[0]);
+        fprintf(stderr, "[+] Use mode: %s <porta>\n", argv[0]);
         exit(1);
     }
     portno = atoi(argv[1]);
@@ -114,11 +116,14 @@ void *routine(void *arg) {
     DIR *path = opendir("."); // Diretorio aberto
     string dir = "."; // Diretorio atual
     string file_name = "";
+    vector<string> _stack;
+    
      
     //Send some messages to the client
-    result = "[+] Voce foi conectado, bem vindo... \n";
+    result = "[+] You have been connected, welcome.... \n";
     write(sock , result.c_str(), result.length());
     bzero(c_msg, 2001);
+
     //Receive a message from client
     while(1) {
         size_msg = recv(sock , c_msg, 2000, 0);
@@ -126,22 +131,22 @@ void *routine(void *arg) {
         cmd = string(c_msg);
         cmd.erase(cmd.length()-1);
 
-        // 3 - Complemento
+        // 3 - Complemento CD
         if(FLAG_CD == 1) {
             dir = cmd;
             path = opendir(cmd.c_str());
-            result = "[+] Diretorio atualizado: "+cmd+"\n";
+            result = "[+] Updated directory: "+cmd+"\n";
             write(sock , result.c_str(), result.length());
             FLAG_CD = 0;
         }
-        // 2 - Complemento
+        // 2 - Complemento RM
         if(FLAG_RM == 1) {
             rmdir(cmd.c_str());
-            result = "[+] Diretorio removido: "+cmd+"\n";
+            result = "[+] Removed directory: "+cmd+"\n";
             write(sock , result.c_str(), result.length());
             FLAG_RM = 0;
         }
-        // 3 - Complemento
+        // 3 - Complemento NANO
         if (FLAG_NANO == 1) {
             fstream fs;
             string file_path = dir+"/new.txt";
@@ -165,26 +170,24 @@ void *routine(void *arg) {
         if (cmd.compare("mkdir") == 0) {
             string create = dir+"/test";
             if(mkdir(create.c_str(), S_IRWXU != 0))
-                cout << "[+] Erro ao criar pasta. \n";
-            result = "[+] Arquivo criado com sucesso ->" + create + "\n";
+                cout << "[+] Error creating folder. \n";
+            result = "[+] Directory successfully created ->" + create + "\n";
             write(sock , result.c_str(), result.length());
         }
         // 2 - Apagar subdiretorio
-        else if (cmd.compare("rm") == 0) {
-            result = "[+] Insira o nome do diretorio a ser removido: "+cmd+"\n";
+        else if (cmd.compare("rmdir") == 0) {
+            result = "[+] Enter the name of the directory to be removed: "+cmd+"\n";
             write(sock , result.c_str(), result.length());
             FLAG_RM = 1;
         }
         // 3 - Entrar em diretorio
         else if (cmd.compare("cd") == 0) {
-            result = "[+] Insira o diretorio. \n"; 
+            result = "[+] Please enter a directory. \n"; 
             write(sock , result.c_str(), result.length());
             FLAG_CD = 1;
         }
         // 4 - Listar arquivos em um diretorio
         else if (cmd.compare("ls") == 0) {
-            cout << "entrando em um dir" << endl;
-            cout << dir << endl;
             DIR* dirp = opendir(dir.c_str());
             struct dirent *de;
 
@@ -202,54 +205,58 @@ void *routine(void *arg) {
             FILE *fp;
             string create = dir+"/new.txt";
             fp = fopen(create.c_str(), "w");
+            result = "[+] File successfully created ->" + create + "\n";
+            write(sock , result.c_str(), result.length());
         }
         // 5 - Remover arquivo
         else if (cmd.compare("rmfile") == 0) {
             FILE *fp;
             string create = dir+"/new.txt";
             if(remove(create.c_str()) != 0) {
-                result = "[+] Erro ao deletar arquivo";
+                result = "[+] Error deleting file. \n";
                 write(sock , result.c_str(), result.length());
             }
-            result = "[+] Arquivo deletado com sucesso";
+            result = "[+] File successfully deleted. \n";
             write(sock , result.c_str(), result.length());
         }
         // 6 - Inserir texto no arquivo
         else if (cmd.compare("nano") == 0) {
             pthread_mutex_lock(&lock);
-            result = "[+] Digite o texto a ser inserido no arquivo: \n";
+            //_stack.push_back("filename")
+            result = "[+] Enter the text to be inserted into the file: \n";
             write(sock , result.c_str(), result.length());
             FLAG_NANO = 1;
+            /*int test = 100000;
+            while(test >= 1) { 
+            }*/
         }
         // 7 - Mostrar conteudo do arquivo
         else if (cmd.compare("cat") == 0) {
-            pthread_mutex_lock(&lock);
+            //pthread_mutex_lock(&lock);
             ifstream file;
             string output;
-            file.open("./new.txt");
+            string locale = dir+"/new.txt";
+            file.open(locale.c_str());
             if (file.is_open()) {
                 while (!file.eof()) {
                     file >> output;
                     write(sock, output.c_str(), output.length());
                 }
+                result = "\n";
+                write(sock , result.c_str(), result.length());
             }
             file.close();
-            /*int test = 100000;
-            while(test >= 1) {
-                
-            }*/
-            pthread_mutex_unlock(&lock);
+            //pthread_mutex_unlock(&lock);
         }
         else if (cmd.compare("exit") == 0) {
-            cout << "[+] Fechando socket..." << endl;
+            cout << "[+] Closing socket..." << endl;
             close(sock);
         }
         // Comando desconhecido
         else {
-            cout << "[+] Comando desconhecido..." << endl;
+            cout << "[+] Unknown command..." << endl;
         }
 
-        //write(sock , cmd.c_str(), cmd.length());
         bzero(c_msg, 2001);
     }
     return 0;
