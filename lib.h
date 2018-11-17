@@ -48,6 +48,7 @@ int get_free_pos(int start, int limit, int size);
 void create_inode(char* inode_id, char* content);
 char* gen_id(int pos, int size);
 void* pipe_read_dir(void* args);
+int write_dir(char* path, char* content);
 
 pthread_t tId[2];
 

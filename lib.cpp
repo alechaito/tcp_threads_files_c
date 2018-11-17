@@ -1,4 +1,5 @@
 #include "lib.h"
+#include "readir.cpp"
 
 char* write_file(char* name, char* content) {
     //cout << "[+] Write file function loading..." << endl;
@@ -65,7 +66,8 @@ int write_dir(char* path, char* content) {
 
 
 /*
-blockdata_id:2bytes/inode_id1:2bytes/blockdata_id2:2bytes
+INODE_DATAVEC
+blockdata_id:2bytes/inode_id1:2bytes/free_space:2bytes
 */
 void create_inode(char* inode_id, char* content) {
     //cout << "[+] Create inode function loading..." << endl;
@@ -80,13 +82,25 @@ void create_inode(char* inode_id, char* content) {
     //cout << "POS DO BLOCK: " << pos_block << endl;
     //cout << "BLOCO ID GERADO: " << block_id << endl;
 
-    // Writing inode id in inode
+    // Writing block id in inode
     fseek(fp, pos, SEEK_SET);
     fputs(block_id, fp);
 
-    // Writing block id in inode
+    // Writing inode id in inode
     fseek(fp, pos+2, SEEK_SET);
     fputs(inode_id, fp);
+
+    // Writing inode free space block
+    // 100-2 from ID BLOCK
+    fseek(fp, pos+4, SEEK_SET);
+    fputs("98", fp);
+
+    cout << "[+] Free space for block memo associated with inode is 98 bytes." << endl;
+
+     // Writing inode id in inode
+    fseek(fp, pos+2, SEEK_SET);
+    fputs(inode_id, fp);
+
 
     // Writing block id in block data
     fseek(fp, pos_block, SEEK_SET);
@@ -96,8 +110,24 @@ void create_inode(char* inode_id, char* content) {
     fseek(fp, pos_block+2, SEEK_SET);
     fputs(content, fp);
 
+    int size = strlen(content);
+    int total = 98 - size;
+    cout << "[+] Content consumed " << size << " bytes from block memo, free: " << (total) << endl;
+
+    char *str = (char*) malloc(2);
+    if(total <= 9) {
+        sprintf(str, "0%d", total);
+    } else {
+        sprintf(str, "%d", total);
+    }
+    cout << str << endl;
+    // Writing in inode the free space of the block memo
+    fseek(fp, pos+4, SEEK_SET);
+    fputs(str, fp);
+
     fclose(fp);
 }
+
 
 
 // GET A FREE INDEX FOR WRITE FILE IN MEMORY
@@ -120,7 +150,6 @@ int get_free_pos(int start, int limit, int size) {
     //cout << "[+] FREE MEMORY FIND: " << i << endl;
     return i;
 }
-
 
 // CALCULATE THE NEXT ID FOR NODE
 char* gen_id(int pos, int size) {
@@ -152,7 +181,7 @@ void check_memo(int start, int limit, int size) {
         fseek(fp, i, SEEK_SET);
         fgets(tmp, size+1, fp);
         cout << tmp << endl;
-        if(strcmp(tmp, "0") == 0 or c == 10) {
+        if(strcmp(tmp, "0") == 0 or c == 5) {
             break;
         }
         else {
@@ -175,6 +204,7 @@ char* get_inode_id(int pos) {
     fgets(buffer, 3, fp);
     return buffer;
 }
+
 
 char* read_pos(int pos, int size) {
     char* buffer = (char*) malloc(size);
